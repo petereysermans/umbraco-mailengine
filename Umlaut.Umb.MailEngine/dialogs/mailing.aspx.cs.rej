@@ -1,0 +1,197 @@
+***************
+*** 5,10 ****
+  using System.Web.UI.WebControls;
+  using umbraco.cms.businesslogic.web;
+  using umbraco.cms.businesslogic.member;
+  
+  namespace Nibble.Umb.MailEngine.dialogs
+  {
+--- 5,16 ----
+  using System.Web.UI.WebControls;
+  using umbraco.cms.businesslogic.web;
+  using umbraco.cms.businesslogic.member;
++ using System.Reflection;
++ using System.IO;
++ using System.Text;
++ using System.Web.Configuration;
++ using System.Threading;
++ using System.Net.Mail;
+  
+  namespace Nibble.Umb.MailEngine.dialogs
+  {
+***************
+*** 37,48 ****
+                  {
+                      this.ddmemberGroup.Items.Add(new ListItem(group.Text, group.Id.ToString()));
+                  }
+- 
+                 
+                  updateCount();
+-                
+  
+              }
+          }
+  
+          protected void btnSend_Click(object sender, EventArgs e)
+--- 43,63 ----
+                  {
+                      this.ddmemberGroup.Items.Add(new ListItem(group.Text, group.Id.ToString()));
+                  }
++                 if (this.ddmemberGroup.Items.Count > 1) this.ddmemberGroup.SelectedIndex = 1;
+                 
+                  updateCount();
++ 
++                 HttpContext.Current.Application.Remove(typeof(mailing).ToString() + ".sendMass");
+  
+              }
++             Assembly assExecuting = Assembly.GetExecutingAssembly();
++             Stream resourceStream = assExecuting.GetManifestResourceStream(typeof(mailing), "progress_script.js");
++             String script;
++             using (StreamReader reader = new StreamReader(resourceStream, Encoding.ASCII))
++                 script = reader.ReadToEnd();
++ 
++             Page.ClientScript.RegisterStartupScript(typeof(mailing), "progressasync", script);
++ 
+          }
+  
+          protected void btnSend_Click(object sender, EventArgs e)
+***************
+*** 83,96 ****
+              {
+                  group = new MemberGroup(MemberGroupID );
+              }
+  
+-             foreach (Member receiver in Helper.FilterMembers(group, txtFilter.Text))
+              {
+-                 Library.SendMailFromPageToMember(txtFrom.Text, receiver, txtSubject.Text, int.Parse(Request["id"]));
+              }
+-             
+          }
+  
+          private void updateCount()
+          {
+              btnSendMass.Enabled = true;
+--- 98,178 ----
+              {
+                  group = new MemberGroup(MemberGroupID );
+              }
++             int PageId = int.Parse(Request["id"]);
++             string body = umbraco.library.RenderTemplate(PageId);
+  
++             HttpContext.Current.Application.Add(typeof(mailing).ToString() + ".sendMass", new MailTask(Helper.FilterMembers(group, txtFilter.Text), txtFrom.Text, txtSubject.Text, PageId, body));
++ 
++         }
++         class MailTask : AsyncProgress
++         {
++             Thread background;
++             List<Member> members;
++             int _progress;
++             string _message;
++             string fromText;
++             string subjectText;
++             int pageid;
++             string body;
++             Dictionary<string, LinkedResource> imagedictionary;
++ 
++             public MailTask(List<Member> members, string fromText, string subjectText, int pageid, string body)
++             {
++                 this.members = members;
++                 this.fromText = fromText;
++                 this.subjectText = subjectText;
++                 this.pageid = pageid;
++                 this.body = body;
++                 this.imagedictionary = Helper.AssembleResources(body);
++                 Thread background = new Thread(backgroundProcess);
++                 background.Start();
++             }
++             public void backgroundProcess()
+              {
++                 lock (this)
++                 {
++                     _progress = 0;
++                     _message = "Starting...";
++                 }
++                 foreach (Member receiver in members)
++                 {
++                     try
++                     {
++                         Library.SendMailFromPageToMember(fromText, receiver, subjectText, pageid, body, imagedictionary);
++                         lock (this)
++                         {
++                             _progress += 1;
++                             _message = "Sent " + _progress.ToString() + " emails.";
++                         }
++                     }
++                     catch
++                     {
++                     }
++                 }
++                 lock (this) _message = "Sending done!";
++ 
+              }
++             #region AsyncProgress Members
++ 
++             int AsyncProgress.progress()
++             {
++                 int r = 0;
++                 lock (this) r = _progress;
++                 return r;
++             }
++ 
++ 
++             string AsyncProgress.message()
++             {
++                 string s;
++                 lock (this) s = _message;
++                 return s;
++             }
++ 
++             #endregion
+          }
+  
++ 
+          private void updateCount()
+          {
+              btnSendMass.Enabled = true;
+***************
+*** 104,110 ****
+              int count = Helper.FilterMembers(group,txtFilter.Text).Count;
+  
+              ProgressBar1.Maximum = count;
+- 
+              lblMemberCount.Text = string.Format("this configuration will send to {0} members", count);
+  
+              if (count == 0)
+--- 186,191 ----
+              int count = Helper.FilterMembers(group,txtFilter.Text).Count;
+  
+              ProgressBar1.Maximum = count;
+              lblMemberCount.Text = string.Format("this configuration will send to {0} members", count);
+  
+              if (count == 0)
+***************
+*** 137,148 ****
+              foreach (Member receiver in Helper.FilterMembers(group, txtFilter.Text))
+              {
+                  Library.SendMailFromPageToMember(txtFrom.Text, receiver, txtSubject.Text, int.Parse(Request["id"]));
+-                 
+                  e.UpdateProgress(i, "Sending to " + receiver.Email);
+                  System.Threading.Thread.Sleep(100);
+                  i++;
+              }
+- 
+              e.UpdateProgress(ProgressBar1.Maximum, "Sending done!");
+          }
+      }
+--- 218,228 ----
+              foreach (Member receiver in Helper.FilterMembers(group, txtFilter.Text))
+              {
+                  Library.SendMailFromPageToMember(txtFrom.Text, receiver, txtSubject.Text, int.Parse(Request["id"]));
++ 
+                  e.UpdateProgress(i, "Sending to " + receiver.Email);
+                  System.Threading.Thread.Sleep(100);
+                  i++;
+              }
+              e.UpdateProgress(ProgressBar1.Maximum, "Sending done!");
+          }
+      }

@@ -1,0 +1,53 @@
+***************
+*** 26,31 ****
+              }
+          }
+      </script>
+      <style type="text/css">
+          .propertyItemheader{width: 160px !Important;}
+      </style>
+--- 26,33 ----
+              }
+          }
+      </script>
++     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
++ 
+      <style type="text/css">
+          .propertyItemheader{width: 160px !Important;}
+      </style>
+***************
+*** 162,168 ****
+                       <div class="propertyItemheader">&nbsp; </div> 
+                       <div class="propertyItemContent">
+                      <asp:Button ID="btnSendMass" runat="server" Text="Send" 
+-                         onclick="btnSendMass_Click" ValidationGroup="send"/>  <small><asp:Literal ID="lblMemberCount" runat="server"></asp:Literal></small>
+                          </div></div>
+                          
+                          <div style="clear:both;">
+--- 164,170 ----
+                       <div class="propertyItemheader">&nbsp; </div> 
+                       <div class="propertyItemContent">
+                      <asp:Button ID="btnSendMass" runat="server" Text="Send" 
++                         ValidationGroup="send" OnClick="btnSendMass_Click" />  <small><asp:Literal ID="lblMemberCount" runat="server"></asp:Literal></small>
+                          </div></div>
+                          
+                          <div style="clear:both;">
+***************
+*** 189,196 ****
+                               <eo:ProgressBar runat="server" id="ProgressBar1" ShowPercentage="True" 
+                                   BorderColor="Gray" BorderWidth="1px" Height="16px"
+  		                         IndicatorColor="Gainsboro" IndicatorIncrement="1"
+- 	                             Width="250px" StartTaskButton="btnSendMass" 
+- 	                            ClientSideOnValueChanged="OnProgress" onruntask="ProgressBar1_RunTask"></eo:ProgressBar>
+                      </div>
+                      </div>
+                      
+--- 191,198 ----
+                               <eo:ProgressBar runat="server" id="ProgressBar1" ShowPercentage="True" 
+                                   BorderColor="Gray" BorderWidth="1px" Height="16px"
+  		                         IndicatorColor="Gainsboro" IndicatorIncrement="1"
++ 	                             Width="250px" 
++ 	                            ClientSideOnValueChanged="OnProgress"></eo:ProgressBar>
+                      </div>
+                      </div>
+                      

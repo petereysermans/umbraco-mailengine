@@ -1,0 +1,149 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using umbraco.cms.businesslogic.web;
+using umbraco.cms.businesslogic.member;
+
+namespace Nibble.Umb.MailEngine.dialogs
+{
+    public partial class mailing : System.Web.UI.Page
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if (!IsPostBack)
+            {
+                int id = int.Parse(Request["id"]);
+                Document doc = new Document(id);
+
+                if (!doc.Published)
+                {
+                    rbMass.Enabled = false;
+                    rbSingle.Enabled = false;
+                    txtFrom.Enabled = false;
+                    txtSubject.Enabled = false;
+                    txtFromName.Enabled = false;
+
+                    pnlError.Visible = true;
+                }
+                txtSubject.Text = doc.Text;
+
+                Literal1.Text = string.Format("Mail document '{0}'",doc.Text);
+
+                //mass
+                this.ddmemberGroup.Items.Add(new ListItem("No specific", "0"));
+                foreach (MemberGroup group in MemberGroup.GetAll)
+                {
+                    this.ddmemberGroup.Items.Add(new ListItem(group.Text, group.Id.ToString()));
+                }
+
+               
+                updateCount();
+               
+
+            }
+        }
+
+        protected void btnSend_Click(object sender, EventArgs e)
+        {
+            //send single
+
+            Library.SendMailFromPage(txtFrom.Text, txtTo.Text, txtSubject.Text, int.Parse(Request["id"]));
+        }
+
+        protected void rbSingle_CheckedChanged(object sender, EventArgs e)
+        {
+            pnlSingle.Visible = true;
+            pnlMass.Visible = false;
+            pnlStatus.Visible = false;
+            RequiredFieldValidator3.Enabled = true;
+            RegularExpressionValidator2.Enabled = true;
+            
+        }
+
+        protected void rbMass_CheckedChanged(object sender, EventArgs e)
+        {
+            pnlMass.Visible = true;
+            pnlStatus.Visible = true;
+            pnlSingle.Visible = false;
+            RequiredFieldValidator3.Enabled = false;
+            RegularExpressionValidator2.Enabled = false;
+        }
+
+        protected void btnSendMass_Click(object sender, EventArgs e)
+        {
+            //needs to be async 
+
+            //send mass
+
+            int MemberGroupID = Convert.ToInt32(ddmemberGroup.SelectedValue);
+            MemberGroup group = null;
+            if (MemberGroupID  != 0)
+            {
+                group = new MemberGroup(MemberGroupID );
+            }
+
+            foreach (Member receiver in Helper.FilterMembers(group, txtFilter.Text))
+            {
+                Library.SendMailFromPageToMember(txtFrom.Text, receiver, txtSubject.Text, int.Parse(Request["id"]));
+            }
+            
+        }
+
+        private void updateCount()
+        {
+            btnSendMass.Enabled = true;
+
+            int MemberGroupID = Convert.ToInt32(ddmemberGroup.SelectedValue);
+            MemberGroup group = null;
+            if (MemberGroupID != 0)
+            {
+                group = new MemberGroup(MemberGroupID);
+            }
+            int count = Helper.FilterMembers(group,txtFilter.Text).Count;
+
+            ProgressBar1.Maximum = count;
+
+            lblMemberCount.Text = string.Format("this configuration will send to {0} members", count);
+
+            if (count == 0)
+                btnSendMass.Enabled = false;
+        }
+
+        protected void ddmemberGroup_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            updateCount();
+        }
+
+        protected void btnRecalc_Click(object sender, EventArgs e)
+        {
+            updateCount();
+        }
+
+       
+        protected void ProgressBar1_RunTask(object sender, EO.Web.ProgressTaskEventArgs e)
+        {
+            
+            e.UpdateProgress(0, "Sending started");
+
+            int MemberGroupID = Convert.ToInt32(ddmemberGroup.SelectedValue);
+            MemberGroup group = null;
+            if (MemberGroupID != 0)
+            {
+                group = new MemberGroup(MemberGroupID);
+            }
+            int i = 1;
+            foreach (Member receiver in Helper.FilterMembers(group, txtFilter.Text))
+            {
+                Library.SendMailFromPageToMember(txtFrom.Text, receiver, txtSubject.Text, int.Parse(Request["id"]));
+                
+                e.UpdateProgress(i, "Sending to " + receiver.Email);
+                System.Threading.Thread.Sleep(100);
+                i++;
+            }
+
+            e.UpdateProgress(ProgressBar1.Maximum, "Sending done!");
+        }
+    }
+}
