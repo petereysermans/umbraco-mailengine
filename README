@@ -1,0 +1,4 @@
+This is a simple mailer package for Umbraco. It has been developed by Tim Geyssens (http://www.nibble.be), you can find his original post at http://www.nibble.be/?p=63.
+Some patches have been applied to fix some bugs, for example the timeout bug has been patched with this solution from the umbraco forum: http://our.umbraco.org/forum/developers/extending-umbraco/8377-Mail-Engine-from-Nibble.
+
+I am planning on further developing the MailEngine, mainly bug fixes. So this repository is meant for people who'd like to use the mail engine.
